@@ -1,59 +1,88 @@
-version: '2'
+version: '3'
 services:
   mysql:
     build:
       context: .
-      dockerfile: Dockerfile-mysql
-    image: mysql-shm:5.6.38
+      dockerfile: Dockerfile.mysql
+    image: mysql-shm:8.0.21
     container_name: mysql-shm
     environment:
       - MYSQL_ROOT_PASSWORD=mysecret
     ports:
-     - "13306:3306"
+      - "3306:3306"
     volumes:
-     - $PWD/container_data/mysql:/var/lib/mysql
+      - $PWD/container_data/mysql:/var/lib/mysql
+    cap_add: 
+      - SYS_NICE # CAP_SYS_NICE
 
-  base_ubuntu:
+  spark_hive:
     build:
       context: .
-      dockerfile: Dockerfile-ubuntu
-    image: ubuntu-shm:latest
-    container_name: ubuntu-shm
-  base_java8:
-    build:
-      context: .
-      dockerfile: Dockerfile-java8
-    image: java8-shm:latest
-    container_name: java8-shm
-
-  spark:
-    build:
-      context: .
-      dockerfile: Dockerfile-spark
-    image: spark-shm:2.2.1
-    container_name: spark-shm
+      dockerfile: Dockerfile.hivemetastore_spark
+    image: spark-hivemetastore
+    container_name: spark-hivemetastore
+    hostname: spark-hive
+    environment: 
+      - "SPARK_MASTER_HOST=spark-hive"
     ports:
-     - "14040:4040"
-     - "18080:8080"
+      - "4040:4040"
+      - "4041:4041"
+      - "8080:8080"
+      - "8081:8081"
+      - "8998:8998"
+      - "9083:9083"
+      - "10000:10000"
     volumes:
-     - $PWD/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
-     - $PWD/conf/spark/log4j.properties:/opt/spark/conf/log4j.properties
-     - $PWD/container_data/spark/warehouse:/shared_data/hive/warehouse
-     - $PWD/table_data:/shared_data/table_data
+      - $PWD/container_data/hive/warehouse:/shared_data/hive/warehouse
+      - $PWD/conf/spark/log4j.properties:/opt/spark-2.4.7-bin-hadoop2.7/conf/log4j.properties
+      - $PWD/conf/livy/livy.conf:/opt/livy/conf/livy.conf
+      - $PWD/container_data/DATA/DBFS:/opt/dbfs
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow-tracking
+    image: mlflow-tracking:1.12.1
+    hostname: mlflow-tracking
     links:
       - "mysql:mysql"
-
-  hive:
+    ports:
+      - "5000:5000"
+    volumes:
+      - $PWD/container_data/mlflow/runs:/mlruns
+      - $PWD/container_data/mlflow/artifacts:/mlartifacts
+  
+  jupyter:
+    image: jupyter/sparkmagic
     build:
       context: .
-      dockerfile: Dockerfile-hive
-    image: hive-shm:1.2.2
-    container_name: hive-shm
-    ports:
-     - "10000:10000"
-    volumes:
-     - $PWD/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
-     - $PWD/container_data/hive/warehouse:/shared_data/hive/warehouse
-     - $PWD/table_data:/shared_data/table_data
+      dockerfile: Dockerfile.jupyter
+      args:
+        dev_mode: "false"
+    container_name: jupyter-lab
+    environment: 
+      - JUPYTER_TOKEN=B726D9DD3A86AC3FD8E3650C47F20D5BC4645155FDF30D970B02D62CA42D3582
     links:
-      - "mysql:mysql"
+      - "spark_hive:spark"
+    ports:
+      - "8888:8888"
+    volumes:
+      - $PWD/container_data/DATA:/home/joyvan/DATA
+
+  polynote:
+    build:
+      context: .
+      dockerfile: Dockerfile.polynote
+    image: adaptertoadapter/polynote:0.3.12-2.11-spark2.4
+    container_name: polynote
+    environment:
+      - PYSPARK_ALLOW_INSECURE_GATEWAY=1
+    links:
+      - "spark_hive"
+    ports:
+      - "8192:8192"
+    volumes: 
+      - $PWD/conf/polynote/config.yml:/opt/config/config.yml
+      - $PWD/container_data/polynotebooks:/opt/notebooks
+    entrypoint: ['./polynote/polynote.py', "--config", "/opt/config/config.yml"]

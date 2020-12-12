@@ -1,5 +1,17 @@
 <configuration>
-   <property>
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://spark-hive:9083</value>
+  </property>
+  <property>
+    <name>hive.metastore.client.socket.timeout</name>
+    <value>300</value>
+  </property>
+  <property>
+      <name>hive.metastore.warehouse.dir</name>
+      <value>/shared_data/hive/warehouse</value>
+  </property>
+  <property>
       <name>javax.jdo.option.ConnectionURL</name>
       <value>jdbc:mysql://mysql:3306/hive_metastore?createDatabaseIfNotExist=true</value>
       <description>metadata is stored in a MySQL server</description>
@@ -24,4 +36,12 @@
      <value>/shared_data/hive/warehouse</value>
      <description>location of default database for the warehouse</description>
    </property>
+  <property>
+    <name>hive.enable.spark.execution.engine</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hive.exec.stagingdir</name>
+    <value>/tmp/hive/hive-staging</value>
+  </property>
 </configuration>
