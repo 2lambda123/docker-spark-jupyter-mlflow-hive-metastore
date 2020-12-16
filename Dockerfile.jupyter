@@ -1,6 +1,4 @@
 FROM jupyter/datascience-notebook:python-3.7.6
-ARG dev_mode=false
-
 USER root
 
 # debian:buster Problem - Need to do this to fix the Errors encountered while processing openjdk.
@@ -10,9 +8,11 @@ RUN mkdir -p /usr/share/man/man1
 RUN conda install requests-kerberos -y
 
 USER $NB_USER
+RUN conda update -n base conda
 
 RUN python -m pip install --upgrade pip
 RUN python -m pip install --upgrade --ignore-installed setuptools
+RUN python -m pip install sparkmagic
 
 COPY conf/jupyter/examples /home/jovyan/work
 
@@ -20,16 +20,34 @@ USER root
 RUN chown -R $NB_USER .
 
 USER $NB_USER
-RUN python -m pip install sparkmagic matplotlib pandas texthero \
-                numpy scipy scikit-learn pandas torch torchvision \
-                tensorflow tensorboard boost xgboost catboost \
-                lightgbm tabulate mlxtend tqdm hyperopt deap scikit-mdr \
-                skrebate yellowbrick spacy tpot update_checker arrow pyarrow \
-                lime shap plotly matplotlib bokeh seaborn mlflow gplearn \
-                imbalanced-learn tsfresh sklearn-deap kmapper skope-rules \
-                delorean trimap pyldavis findspark pyspark --user
+# Python Libraries
+ENV PATH=/home/jovyan/.local/bin:$PATH
+RUN python -m pip install --upgrade pip \
+&&  python -m pip install pywinrm[kerberos] \
+&& python -m pip install sparkmagic texthero numpy \
+torch torchvision tensorflow tensorboard boost xgboost catboost lightgbm \
+tabulate mlxtend==0.18 hyperopt deap scikit-mdr skrebate yellowbrick spacy \
+tpot update_checker arrow pyarrow lime shap plotly matplotlib bokeh mlflow \
+gplearn imbalanced-learn tsfresh==0.17.0 sklearn-deap kmapper skope-rules delorean trimap \
+pyldavis \
+pyspark==2.4.7 \
+pandas==1.1.5 \
+scipy==1.5.4 \
+tdigest==0.5.2.2 \
+seaborn==0.11.0 \
+scikit-learn==0.23.2 \
+matplotlib==3.3.3 \
+hurry.filesize==0.9 \
+PyYAML==5.3.1 \
+tqdm==4.54.1 \
+zipp==3.4.0 \
+urllib3==1.26.2 \
+notebook==6.1.5 \
+sqlalchemy==1.3.20 \
+websocket_client==0.57.0 \
+findspark --user
 
-RUN mkdir /home/$NB_USER/.sparkmagic
+RUN mkdir -p /home/$NB_USER/.sparkmagic
 COPY conf/jupyter/sparkmagic/example_config.json /home/$NB_USER/.sparkmagic/config.json
 RUN sed -i 's/localhost/spark/g' /home/$NB_USER/.sparkmagic/config.json
 RUN jupyter nbextension enable --py --sys-prefix widgetsnbextension
@@ -42,8 +60,8 @@ RUN jupyter serverextension enable --py sparkmagic
 USER root
 RUN chown $NB_USER /home/$NB_USER/.sparkmagic/config.json
 
-ENV JUPYTER_ENABLE_LAB yes
+USER $NB_USER
+ARG JUPYTER_ENABLE_LAB
+ENV JUPYTER_ENABLE_LAB=$JUPYTER_ENABLE_LAB
 
 CMD ["start-notebook.sh", "--NotebookApp.iopub_data_rate_limit=1000000000"]
-
-USER $NB_USER

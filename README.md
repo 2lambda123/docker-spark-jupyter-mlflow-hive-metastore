@@ -4,10 +4,12 @@ Jupyter with Spark Magics accessing Spark Standalone Cluster using Apache Livy. 
 
 Merging Sparkmagic with Spark Hive Metastore docker projects.
 This repo is combines several reference repos
-* forked from https://github.com/amesar/docker-spark-hive-metastore
-* polynote from https://github.com/xtreamsrl/polynote-docker 
-* mlflow from https://github.com/crmne/mlflow-tracking 
+* Apache Spark with Hive Metastore from https://github.com/amesar/docker-spark-hive-metastore
+* Polynote from https://github.com/xtreamsrl/polynote-docker 
+* MLFlow from https://github.com/crmne/mlflow-tracking 
 * Jupyter with Spark Magics from https://github.com/jupyter-incubator/sparkmagic
+* Apache Airflow from https://github.com/mrobee/airflow-spark
+
 
 ### Overview
 
@@ -22,6 +24,12 @@ In order to save data between container runs, we use Docker's volume feature to 
  * container_data/mysql - MySQL data from /var/lib/mysql
  * container_data/spark/warehouse - /shared_data/hive/warehouse - hive.metastore.warehouse.dir
  * container_data/hive/warehouse - /shared_data/hive/warehouse - hive.metastore.warehouse.dir
+ 
+ *** Airflow Usage ***
+ * Airflow data in ```container_data/airflow/data``` directory
+ * Put your dag files in ```container_data/airflow/dags``` directory
+ * Put your additional pipeline scripts in ```container_data/airflow/pipeline_scripts``` directory
+ * Customize ```container_data/airflow/.env```
 
 ### Build the containers
 ```

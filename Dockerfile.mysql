@@ -1,7 +1,9 @@
-FROM mysql:8.0.21
 
-ENV MYSQL_ROOT_PASSWORD=mysecret
-ENV MYSQL_ROOT_USER=root
-# ENV MYSQL_USER=mlflow
-# ENV MYSQL_PASSWORD=secret
+ARG MYSQL_VERSION
+ARG MYSQL_ROOT_PASSWORD
+FROM mysql:${MYSQL_VERSION}
 
+RUN echo "=================================================" \
+    && echo "PASSWORD=$MYSQL_ROOT_PASSWORD" \
+    && echo "=============================================="
+ENV MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}

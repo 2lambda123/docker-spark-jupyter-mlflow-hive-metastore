@@ -4,14 +4,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.mysql
-    image: mysql-shm:8.0.21
+      args:
+        - MYSQL_VERSION=$MYSQL_VERSION
+    image: mysql-shm:5.7.32
     container_name: mysql-shm
+    hostname: mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=mysecret
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+      - COMPOSE_HTTP_TIMEOUT=120
     ports:
       - "3306:3306"
     volumes:
       - $PWD/container_data/mysql:/var/lib/mysql
+      - $PWD/conf/mysql/init:/docker-entrypoint-initdb.d
     cap_add: 
       - SYS_NICE # CAP_SYS_NICE
 
@@ -19,11 +24,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.hivemetastore_spark
+      args:
+        - HADOOP_VERSION=$HADOOP_VERSION
+        - HIVE_VERSION=$HIVE_VERSION
+        - MYSQL_CONNECTOR_VERSION=$MYSQL_CONNECTOR_VERSION
+        - SPARK_VERSION=$SPARK_VERSION
+        - SPARK_HADOOP_VERSION=$SPARK_HADOOP_VERSION
+        - LIVY_VERSION=$LIVY_VERSION
     image: spark-hivemetastore
     container_name: spark-hivemetastore
     hostname: spark-hive
+    depends_on:
+      - mysql
+    links:
+      - "mysql:mysql"
     environment: 
-      - "SPARK_MASTER_HOST=spark-hive"
+      - SPARK_MASTER_HOST=spark-hive
     ports:
       - "4040:4040"
       - "4041:4041"
@@ -42,9 +58,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.mlflow
+      args:
+        - MLFLOW_ARTIFACT_DIR=$MLFLOW_ARTIFACT_DIR
     container_name: mlflow-tracking
     image: mlflow-tracking:1.12.1
     hostname: mlflow-tracking
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MLFLOW_ARTIFACT_URI=${MLFLOW_ARTIFACT_DIR}
+    depends_on:
+      - mysql
     links:
       - "mysql:mysql"
     ports:
@@ -59,23 +82,32 @@ services:
       context: .
       dockerfile: Dockerfile.jupyter
       args:
-        dev_mode: "false"
+        - JUPYTER_ENABLE_LAB=$JUPYTER_ENABLE_LAB
     container_name: jupyter-lab
+    depends_on:
+      - spark_hive
     environment: 
-      - JUPYTER_TOKEN=B726D9DD3A86AC3FD8E3650C47F20D5BC4645155FDF30D970B02D62CA42D3582
+      - JUPYTER_TOKEN=$JUPYTER_TOKEN
     links:
       - "spark_hive:spark"
     ports:
       - "8888:8888"
     volumes:
-      - $PWD/container_data/DATA:/home/joyvan/DATA
+      - $PWD/container_data/DATA:/home/jovyan/DATA
 
   polynote:
     build:
       context: .
       dockerfile: Dockerfile.polynote
+      args:
+        - POLYNOTE_VERSION=$POLYNOTE_VERSION
+        - SPARK_HADOOP_VERSION=$SPARK_HADOOP_VERSION
+        - SPARK_VERSION=$SPARK_VERSION
+        - SCALA_VERSION=$SCALA_VERSION
     image: adaptertoadapter/polynote:0.3.12-2.11-spark2.4
     container_name: polynote
+    depends_on:
+      - spark_hive
     environment:
       - PYSPARK_ALLOW_INSECURE_GATEWAY=1
     links:
@@ -86,3 +118,27 @@ services:
       - $PWD/conf/polynote/config.yml:/opt/config/config.yml
       - $PWD/container_data/polynotebooks:/opt/notebooks
     entrypoint: ['./polynote/polynote.py', "--config", "/opt/config/config.yml"]
+
+  airflow-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+      args:
+        - SPARK_VERSION=$SPARK_VERSION
+        - SPARK_HADOOP_VERSION=$SPARK_HADOOP_VERSION
+    image: airflow:0.1.0
+    container_name: airflow-server
+    hostname: airflow-server
+    depends_on:
+      - spark_hive
+    environment:
+      - SPARK_MASTER=${SPARK_MASTER}
+      - SPARK_DRIVER_MEMORY=${SPARK_DRIVER_MEMORY}
+      - SPARK_HOME=${SPARK_HOME}
+      - PATH=${PATH}
+    ports:
+      - "8089:8089"
+    volumes:
+      - $PWD/container_data/airflow/dags:/airflow/dags
+      - $PWD/container_data/DATA:/data
+      - $PWD/container_data/airflow/pipeline_scripts:/pipeline_scripts

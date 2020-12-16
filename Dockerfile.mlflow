@@ -1,16 +1,33 @@
-# Docker multistage build to reduce image size
-FROM python:3.7 AS build
-RUN python -m venv /opt/venv
-# Make sure we use the virtualenv:
-ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade pip
-RUN pip install mlflow psycopg2 mysqlclient
+FROM python:3.7
+RUN apt-get update
+RUN pip install mlflow
+RUN pip install mysqlclient
 
-FROM python:3.7-slim
-COPY --from=build /opt/venv /opt/venv
-# Make sure we use the virtualenv:
-ENV PATH="/opt/venv/bin:$PATH"
+#RUN mkdir -p /home/mlflow
+COPY conf/mlflow/run_server.sh .
+#/home/mlflow
+RUN chmod +x ./run_server.sh
+#WORKDIR /home/mlflow
+
+ARG MLFLOW_ARTIFACT_DIR
+ENV MLFLOW_ARTIFACT_URI=$MLFLOW_ARTIFACT_DIR
+
+RUN mkdir -p ${MLFLOW_ARTIFACT_URI}
+
 EXPOSE 5000/tcp
-ENTRYPOINT [ "mlflow", "server", "--host", "0.0.0.0"]
-CMD [ "--backend-store-uri", "sqlite:////mlruns/mlruns.db", \
-      "--default-artifact-root", "/mlartifacts"]
+#COPY conf/mlflow/test.sh .
+#RUN chmod +x ./test.sh
+#CMD ./test.sh
+#CMD ./run_server.sh
+
+#ENTRYPOINT /bin/bash
+# ENTRYPOINT ["python",'-c','"while (1): print (0)"']
+#./run_server.sh
+
+#ENTRYPOINT [ "mlflow", "server", "--host", "0.0.0.0"]
+#CMD [ "--backend-store-uri", "sqlite:////mlruns/mlruns.db", \
+#      "--default-artifact-root", "/mlartifacts"]22
+ENTRYPOINT ["mlflow", "server", "--host", "0.0.0.0", \
+    "--port", "5000", "--backend-store-uri", \
+    " mysql://root:mysecret@mysql/mlflow", \
+    "--default-artifact-root", "/mlartifacts"]
