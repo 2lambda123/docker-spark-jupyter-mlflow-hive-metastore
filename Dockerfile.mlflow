@@ -15,18 +15,7 @@ ENV MLFLOW_ARTIFACT_URI=$MLFLOW_ARTIFACT_DIR
 RUN mkdir -p ${MLFLOW_ARTIFACT_URI}
 
 EXPOSE 5000/tcp
-#COPY conf/mlflow/test.sh .
-#RUN chmod +x ./test.sh
-#CMD ./test.sh
-#CMD ./run_server.sh
 
-#ENTRYPOINT /bin/bash
-# ENTRYPOINT ["python",'-c','"while (1): print (0)"']
-#./run_server.sh
-
-#ENTRYPOINT [ "mlflow", "server", "--host", "0.0.0.0"]
-#CMD [ "--backend-store-uri", "sqlite:////mlruns/mlruns.db", \
-#      "--default-artifact-root", "/mlartifacts"]22
 ENTRYPOINT ["mlflow", "server", "--host", "0.0.0.0", \
     "--port", "5000", "--backend-store-uri", \
     " mysql://root:mysecret@mysql/mlflow", \
