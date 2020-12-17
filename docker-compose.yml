@@ -75,7 +75,7 @@ services:
     volumes:
       - $PWD/container_data/mlflow/runs:/mlruns
       - $PWD/container_data/mlflow/artifacts:/mlartifacts
-  
+
   jupyter:
     image: jupyter/sparkmagic
     build:
